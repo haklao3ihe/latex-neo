@@ -1,80 +1,475 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hello, Deno</title>
-  <link rel="preload" href="https://demo-styles.deno.deno.net/fonts/Moranga-Regular.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="https://demo-styles.deno.deno.net/fonts/Moranga-Medium.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="https://demo-styles.deno.deno.net/fonts/Recursive_Variable.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="https://demo-styles.deno.deno.net/styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LaTeX Study Notebook</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <style>
-    img {
-      display: inline-block;
-      vertical-align: middle;
+    body { margin:0; background:#f0f0f0; font-family:Arial,Helvetica,sans-serif }
+    .notebook-paper{
+      background:#fdfdfb;
+      background-image:linear-gradient(#f1f1f1 1px,transparent 1px);
+      background-size:100% 3rem;
+      min-height:100vh;
+      padding:4rem;
+      position:relative;
+      cursor:text;
     }
+    .red-line{position:absolute;top:0;left:4rem;width:2px;height:100%;background:rgba(239,68,68,.2)}
+    .latex-container{line-height:1.3;padding:0.2rem 0}
+    .katex{font-size:1.1em!important}
+    .katex-display{margin:0.3em 0!important}
+    kbd{background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;padding:.1rem .4rem;font-size:.8em}
+
+    .global-preview{
+      position:fixed;top:1rem;left:1rem;width:320px;max-height:40vh;
+      overflow:auto;background:white;border:2px solid #93c5fd;
+      border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.15);z-index:1000;
+    }
+    
+    .line-wrapper {
+      height: 3rem;
+      position: relative;
+    }
+    
+    .content-block {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 0.25rem 0.5rem;
+      min-height: 3rem;
+    }
+    
+    .title-section {
+      margin-bottom: 2rem;
+    }
+
+    .nav-button{
+      position:fixed;top:1rem;padding:0.5rem 1rem;background:white;
+      border:2px solid #93c5fd;border-radius:8px;cursor:pointer;
+      font-weight:bold;color:#2563eb;transition:all 0.2s;
+      box-shadow:0 2px 8px rgba(0,0,0,.1);z-index:999;
+    }
+    .nav-button:hover{background:#eff6ff;transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.15)}
+    .nav-button:disabled{opacity:0.3;cursor:not-allowed}
+    .nav-button:disabled:hover{transform:none}
+    
+    .save-button{
+      position:fixed;top:1rem;right:50%;transform:translateX(50%);
+      padding:0.5rem 1.5rem;background:#10b981;color:white;
+      border:none;border-radius:8px;cursor:pointer;font-weight:bold;
+      box-shadow:0 2px 8px rgba(0,0,0,.1);z-index:999;transition:all 0.2s;
+    }
+    .save-button:hover{background:#059669;transform:translateX(50%) translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.15)}
+    
+    .page-indicator{
+      position:fixed;top:4.5rem;right:50%;transform:translateX(50%);
+      background:white;padding:0.3rem 1rem;border-radius:6px;
+      font-size:0.9rem;color:#6b7280;box-shadow:0 2px 8px rgba(0,0,0,.1);z-index:999;
+    }
+
+    .context-menu{
+      position:fixed;background:white;border:1px solid #d1d5db;
+      border-radius:8px;padding:0.5rem;box-shadow:0 4px 12px rgba(0,0,0,.2);
+      z-index:9999;min-width:200px;
+    }
+    .context-menu input{
+      width:100%;padding:0.4rem;border:1px solid #d1d5db;
+      border-radius:4px;margin-top:0.3rem;font-size:0.9rem;
+    }
+    .context-menu button{
+      width:100%;padding:0.4rem;background:#3b82f6;color:white;
+      border:none;border-radius:4px;cursor:pointer;margin-top:0.5rem;
+      font-size:0.9rem;font-weight:600;
+    }
+    .context-menu button:hover{background:#2563eb}
   </style>
 </head>
-
 <body>
-    <main>
-      <section>
-        <a href="https://deno.com/deploy">
-        </a>
-      <h1>
-        <p>
-          Hello, Deno!
-        </p>
-      </h1>
-      <p>
-        This little example is being served by <a href="https://deno.com/">Deno</a>.
-        You can run it locally or in porduction on <a href="https://deno.com/deploy">Deno Deploy</a> or other hosting platforms.
-      </p>
-      <ul>
-        <li>Run it locally with<code>deno task dev</code></li>
-        <li>Deploy it to <a href="https://deno.com/deploy">Deno Deploy</a> via the CLI by running<code>deno deploy</code></li>
-        <li>Run it locally and share it publically by running <code>deno deploy --connected</code></li>
-      </ul>
-    </section>
-      <hr>
-    <section>
-      <h2>What's next?</h2>
-      <p>
-        You can clone this example and deploy it to Deno Deploy in just a few clicks
-        <a href="https://app.deno.com/new?clone=https://github.com/denoland/examples&path=hello-world"><img src="https://deno.com/button" alt="Deploy on Deno"/></a>
-      </p>
-      <ul>
-        <li>
-          <a href="https://docs.deno.com/examples">More examples in the Deno Docs</a>
-        </li>
-        <li>
-          <a href="https://deno.com/deploy">Deno Deploy Early Access</a>
-        </li>
-      </ul>
-    </section>
-    </main>
-    <hr>
-    <footer>
-      <section>
-      <ul class="flex-btwn">
-        <li>
-          <a href="https://deno.com">BlueSky</a>
-        </li>
-        <li>
-          <a href="https://deno.com">Twitter</a>
-        </li>
-        <li>
-          <a href="https://deno.com">YouTube</a>
-        </li>
-        <li>
-          <a href="https://deno.com">Newsletter</a>
-        </li>
-        <li>
-          <a href="https://deno.com">Deno</a>
-        </li>
-      </ul>
-      </section>
-    </footer>
+<div id="root"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client"
+  }
+}
+</script>
+
+<script type="text/babel" data-type="module">
+import React,{useState,useMemo,useRef,useEffect} from 'react';
+import {createRoot} from 'react-dom/client';
+
+const LaTeXRenderer=({content})=>{
+  const html=useMemo(()=>{
+    if(!content) return '';
+    try{return window.katex.renderToString(content,{displayMode:true,throwOnError:false});}
+    catch{return '<span style="color:red">LaTeX Error</span>'}
+  },[content]);
+  return <div className="latex-container" dangerouslySetInnerHTML={{__html:html}}/>;
+};
+
+const LINE = 48; // 3rem
+const ROWS_PER_PAGE = 50;
+const COLS_PER_PAGE = 40; // 使用しないが仕様として記載
+
+const App=()=>{
+  const [currentPage,setCurrentPage]=useState(1);
+  const [pages,setPages]=useState({1:{title:'学習ノート',lines:{}}});
+  const [editingTitle,setEditingTitle]=useState(false);
+  const [editingLine,setEditingLine]=useState(null);
+  const [editValue,setEditValue]=useState('');
+  const [saving,setSaving]=useState(false);
+  const [contextMenu,setContextMenu]=useState(null); // {x, y, lineIdx}
+  const [fontSizeInput,setFontSizeInput]=useState('');
+
+  const paperRef=useRef(null);
+  const linesContainerRef=useRef(null);
+  const contentRefs=useRef({});
+
+  const currentPageData=pages[currentPage]||{title:'学習ノート',lines:{}};
+  const {title,lines}=currentPageData;
+
+  const setTitle=(newTitle)=>{
+    setPages(prev=>({
+      ...prev,
+      [currentPage]:{...prev[currentPage],title:newTitle}
+    }));
+  };
+
+  const setLines=(newLines)=>{
+    setPages(prev=>({
+      ...prev,
+      [currentPage]:{...prev[currentPage],lines:newLines}
+    }));
+  };
+
+  useEffect(()=>{
+    Object.keys(lines).forEach(startLine=>{
+      const el=contentRefs.current[startLine];
+      if(!el) return;
+      const height=el.offsetHeight;
+      const lineCount=Math.max(1,Math.ceil(height/LINE));
+      if(lines[startLine].lineCount!==lineCount){
+        setLines({
+          ...lines,
+          [startLine]:{...lines[startLine],lineCount}
+        });
+      }
+    });
+  },[lines]);
+
+  const occupiedLines=useMemo(()=>{
+    const occupied=new Set();
+    Object.keys(lines).forEach(startLine=>{
+      const start=parseInt(startLine);
+      const count=lines[startLine].lineCount||1;
+      for(let i=0;i<count;i++){
+        occupied.add(start+i);
+      }
+    });
+    return occupied;
+  },[lines]);
+
+  const getOwnerLine=(lineIdx)=>{
+    for(const startLine of Object.keys(lines)){
+      const start=parseInt(startLine);
+      const count=lines[startLine].lineCount||1;
+      if(lineIdx>=start && lineIdx<start+count){
+        return start;
+      }
+    }
+    return null;
+  };
+
+  const saveLine=(idx,isLatex)=>{
+    const owner=getOwnerLine(idx);
+    const newLines={...lines};
+    if(owner!==null){
+      delete newLines[owner];
+    }
+    // フォントサイズを保持
+    const fontSize=lines[idx]?.fontSize||18;
+    newLines[idx]={content:editValue,type:isLatex?'latex':'text',lineCount:1,fontSize};
+    setLines(newLines);
+    setEditingLine(null);
+    setEditValue('');
+  };
+
+  const changeFontSize=(idx,newSize)=>{
+    if(!lines[idx]) return;
+    const newLines={...lines};
+    newLines[idx]={...newLines[idx],fontSize:newSize};
+    setLines(newLines);
+    setContextMenu(null);
+  };
+
+  const deleteLine=(idx)=>{
+    const owner=getOwnerLine(idx);
+    if(owner!==null){
+      const newLines={...lines};
+      delete newLines[owner];
+      setLines(newLines);
+    }
+  };
+
+  const onKey=(e,idx)=>{
+    if(e.key==='Enter'&&e.shiftKey){e.preventDefault();saveLine(idx,true)}
+    if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();saveLine(idx,false)}
+    if(e.key==='Escape'){setEditingLine(null);setEditValue('');}
+    if(e.key==='Backspace'&&editValue===''){e.preventDefault();deleteLine(idx);setEditingLine(null);}
+  };
+
+  const clickPaper=(e)=>{
+    if(!linesContainerRef.current) return;
+    
+    // 現在編集中の内容を処理
+    if(editingLine!==null){
+      if(editValue.trim()){
+        // 内容がある場合は保存
+        const owner=getOwnerLine(editingLine);
+        const newLines={...lines};
+        if(owner!==null){
+          delete newLines[owner];
+        }
+        const existingType=lines[editingLine]?.type||'text';
+        newLines[editingLine]={content:editValue,type:existingType,lineCount:1,fontSize:lines[editingLine]?.fontSize||18};
+        setLines(newLines);
+      } else {
+        // 内容が空の場合は削除
+        deleteLine(editingLine);
+      }
+    }
+    
+    const rect=linesContainerRef.current.getBoundingClientRect();
+    const y=e.clientY-rect.top;
+    const idx=Math.max(0,Math.floor(y/LINE));
+    const owner=getOwnerLine(idx);
+    const editIdx=owner!==null?owner:idx;
+    setEditingLine(editIdx);
+    setEditValue(lines[editIdx]?.content||'');
+  };
+
+  const handleContextMenu=(e,lineIdx)=>{
+    e.preventDefault();
+    const owner=getOwnerLine(lineIdx);
+    const targetIdx=owner!==null?owner:lineIdx;
+    
+    // その行にコンテンツがある場合のみ
+    if(lines[targetIdx]){
+      setContextMenu({x:e.clientX,y:e.clientY,lineIdx:targetIdx});
+      setFontSizeInput(lines[targetIdx].fontSize||18);
+    }
+  };
+
+  const applyFontSize=()=>{
+    if(contextMenu && fontSizeInput){
+      const size=parseInt(fontSizeInput);
+      if(size>=8 && size<=72){
+        changeFontSize(contextMenu.lineIdx,size);
+      }
+    }
+  };
+
+  // クリックでコンテキストメニューを閉じる
+  useEffect(()=>{
+    const closeMenu=()=>setContextMenu(null);
+    if(contextMenu){
+      document.addEventListener('click',closeMenu);
+      return()=>document.removeEventListener('click',closeMenu);
+    }
+  },[contextMenu]);
+
+  const nextPage=()=>{
+    const next=currentPage+1;
+    if(!pages[next]){
+      setPages(prev=>({...prev,[next]:{title:`学習ノート ${next}`,lines:{}}}));
+    }
+    setCurrentPage(next);
+    setEditingLine(null);
+    setEditValue('');
+  };
+
+  const prevPage=()=>{
+    if(currentPage>1){
+      setCurrentPage(currentPage-1);
+      setEditingLine(null);
+      setEditValue('');
+    }
+  };
+
+  const savePDF=async()=>{
+    setSaving(true);
+    try{
+      const element=paperRef.current;
+      const canvas=await html2canvas(element,{
+        scale:2,
+        useCORS:true,
+        logging:false,
+        backgroundColor:'#fdfdfb'
+      });
+      
+      const imgData=canvas.toDataURL('image/png');
+      const pdf=new window.jspdf.jsPDF({
+        orientation:'portrait',
+        unit:'mm',
+        format:'a4'
+      });
+      
+      const pdfWidth=pdf.internal.pageSize.getWidth();
+      const pdfHeight=pdf.internal.pageSize.getHeight();
+      const imgWidth=canvas.width;
+      const imgHeight=canvas.height;
+      const ratio=Math.min(pdfWidth/imgWidth,pdfHeight/imgHeight);
+      const imgX=(pdfWidth-(imgWidth*ratio))/2;
+      const imgY=0;
+      
+      pdf.addImage(imgData,'PNG',imgX,imgY,imgWidth*ratio,imgHeight*ratio);
+      pdf.save(`notebook-page${currentPage}.pdf`);
+    }catch(err){
+      alert('PDF保存に失敗しました: '+err.message);
+    }finally{
+      setSaving(false);
+    }
+  };
+
+  return(
+    <div className="min-h-screen flex justify-center py-12">
+      {/* Navigation */}
+      <button className="nav-button" style={{left:'1rem'}} onClick={prevPage} disabled={currentPage===1}>
+        ← 前
+      </button>
+      <button className="nav-button" style={{right:'1rem'}} onClick={nextPage}>
+        次 →
+      </button>
+      
+      {/* Save PDF */}
+      <button className="save-button" onClick={savePDF} disabled={saving}>
+        {saving?'保存中...':'PDF保存'}
+      </button>
+      
+      {/* Page Indicator */}
+      <div className="page-indicator">
+        ページ {currentPage}
+      </div>
+
+      {/* Preview */}
+      {editingLine!==null && (
+        <div className="global-preview">
+          <div className="px-3 py-2 border-b text-xs font-bold text-blue-500">
+            LaTeX Preview (P{currentPage} 行{editingLine + 1})
+          </div>
+          <div className="p-3 flex justify-center items-center min-h-[80px]">
+            <LaTeXRenderer content={editValue||'\\text{プレビュー}'} />
+          </div>
+          <div className="px-3 py-2 border-t text-xs text-gray-500">
+            <kbd>Shift</kbd>+<kbd>Enter</kbd>: LaTeX | <kbd>Ctrl</kbd>+<kbd>Enter</kbd>: テキスト
+          </div>
+        </div>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div className="context-menu" style={{left:contextMenu.x,top:contextMenu.y}} onClick={e=>e.stopPropagation()}>
+          <div className="text-sm font-semibold text-gray-700 mb-1">フォントサイズ変更</div>
+          <input 
+            type="number" 
+            min="8" 
+            max="72" 
+            value={fontSizeInput}
+            onChange={e=>setFontSizeInput(e.target.value)}
+            placeholder="8-72"
+            onKeyDown={e=>e.key==='Enter'&&applyFontSize()}
+            onClick={e=>e.stopPropagation()}
+          />
+          <button onClick={(e)=>{e.stopPropagation();applyFontSize()}}>適用</button>
+        </div>
+      )}
+
+      <div ref={paperRef}
+        className="notebook-paper w-full max-w-4xl shadow-xl rounded-lg">
+        <div className="red-line" />
+
+        {/* Title */}
+        <div className="title-section">
+          {editingTitle?(
+            <input autoFocus
+              className="text-4xl font-serif bg-transparent outline-none w-full"
+              value={title}
+              onChange={e=>setTitle(e.target.value)}
+              onBlur={()=>setEditingTitle(false)}
+              onKeyDown={e=>e.key==='Enter'&&setEditingTitle(false)}
+            />
+          ):(
+            <h1 
+              className="text-4xl font-serif cursor-text border-b pb-4" 
+              onClick={e=>{e.stopPropagation();setEditingTitle(true)}}
+            >
+              {title}
+            </h1>
+          )}
+        </div>
+
+        {/* Lines */}
+        <div ref={linesContainerRef} onClick={clickPaper}>
+          {Array.from({length:ROWS_PER_PAGE}).map((_,i)=>{
+            const line=lines[i];
+            const isOwner=line!==undefined;
+            const isOccupied=occupiedLines.has(i);
+            const editing=editingLine===i;
+            const fontSize=line?.fontSize||18;
+
+            return(
+              <div key={i} className="line-wrapper" onContextMenu={(e)=>handleContextMenu(e,i)}>
+                {editing?(
+                  <div className="content-block">
+                    <textarea autoFocus
+                      className="w-full bg-transparent outline-none font-mono resize-none"
+                      style={{minHeight:'2.5rem',fontSize:`${fontSize}px`}}
+                      rows={3}
+                      value={editValue}
+                      onChange={e=>setEditValue(e.target.value)}
+                      onKeyDown={e=>onKey(e,i)}
+                    />
+                  </div>
+                ):(
+                  isOwner && (
+                    <div 
+                      ref={el=>contentRefs.current[i]=el}
+                      className="content-block"
+                      style={{fontSize:`${fontSize}px`}}
+                    >
+                      {line.type==='latex'
+                        ? <LaTeXRenderer content={line.content}/>
+                        : <p className="whitespace-pre-wrap leading-relaxed">{line.content}</p>}
+                    </div>
+                  )
+                )}
+                {!editing && !isOwner && !isOccupied && (
+                  <div className="px-2 pt-1">
+                    <span className="text-gray-300 text-sm">―</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+createRoot(document.getElementById('root')).render(<App/>);
+</script>
 </body>
 </html>
